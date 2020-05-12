@@ -103,3 +103,47 @@ metrics(results, truth = "MPG", estimate = `Random forest`)
 # apresente desvios causados por erros de medição ou fatores aleatórios.
 
 
+
+# ------------ Treinando um Modelo com Resample ------------ 
+# Resampling pode aprimorar a precisão de modelos de aprendizado de máquina e
+# reduzir o overfitting.
+
+# Ajustando os modelos com bootstrap resampling
+cars_lm_bt <- train(log(MPG) ~ ., 
+                    method = "lm", 
+                    data = car_training,
+                    trControl = trainControl(method = "boot"))
+
+cars_rf_bt <- train(log(MPG) ~ ., 
+                    method = "rf", 
+                    data = car_training,
+                    trControl = trainControl(method = "boot"))
+
+# Uma olhada nos modelos
+cars_lm_bt
+cars_rf_bt
+
+
+# ------------ Avaliando como performaram os modelos e comparando-os ------------ 
+
+results <- car_testing %>%
+  mutate(MPG = log(MPG),
+         `Linear regression` = predict(cars_lm_bt, car_testing),
+         `Random forest` = predict(cars_rf_bt, car_testing))
+
+metrics(results, truth = MPG, estimate = `Linear regression`)
+metrics(results, truth = MPG, estimate = `Random forest`)
+
+
+# ------------ Plotagem das predições do modelo, para inspecioná-las visualmente ------------ 
+results %>%
+  gather(Method, Result, `Linear regression`:`Random forest`) %>%
+  ggplot(aes(MPG, Result, color = Method)) +
+  geom_point(size = 1.5, alpha = 0.5) +
+  facet_wrap(~Method) +
+  geom_abline(lty = 2, color = "gray50") +
+  geom_smooth(method = "lm")
+
+# Ambos: as métricas dos modelos e as plotagens mostram que random forest model está
+# performando melhor. Pode-se predizer eficiencia de conbustível mais precisamente
+# com um random forest model.
