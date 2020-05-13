@@ -81,10 +81,75 @@ up_training <- upSample(x = select(stack_training, -Remote),
 # Contando o número de cada tipo de empregados remotos
 up_training %>%
   count(Remote)
-
 # Agora tem-se um conjunto de dados com classes balanceadas, 
 # prontas para o aprendizado de máquina!
 
 
+#  ------------ Treinandos os modelos de classificação ------------ 
+# Dois modelos serão usados: logistic regression e random forest, e pra ambos
+# serão implementados bootstrap resampling e upsampling, pra lidar com o 
+# desbalanceamento da classe de desenvolvedores remotos no dataset.
+# Logistic regression model
+stack_glm <- train(Remote ~ ., method = "glm", family = "binomial",
+                   data = stack_training,
+                   trControl = trainControl(method = "boot",
+                                            sampling = "up"))
+
+# Print do objeto do modelo
+stack_glm
+
+# Random forest model
+stack_rf <- train(Remote ~ ., method = "rf", 
+                  data = stack_training,
+                  trControl = trainControl(method = "boot",
+                                           sampling = "up",
+                                           n_jobs))
+
+# Print the model object
+stack_rf
 
 
+#  ------------ Avaliando os modelos ------------
+# Here we can see the overall accuracy, as well as the positive and negative 
+# predictive values, for the logistic regression model evaluated on the testing data. 
+# Confusion matrix para logistic regression model
+stack_testing %>%
+  mutate(`Logistic regression` = predict(stack_glm, stack_testing)) %>%
+  conf_mat(truth = Remote, estimate = "Logistic regression")
+
+# Confusion matrix para random forest model
+stack_testing %>%
+  mutate(`Random forest` = predict(stack_rf, stack_testing)) %>%
+  conf_mat(truth = Remote, estimate = "Random forest")
+
+# A confusion matrix descreve quão bem um modelo de classificação performou. A confusion
+# A confusion matrix tabula quantos exemplos em cada classe foram corretamente 
+# classificados pelo modelo. Neste caso, ela mostrará quantos desenvolvedores remotos 
+# foram classificados como remotos, e quantos não-remotos foram classificados como tal.
+# Ela também mostrará quantos foram classificados nas categorias erradas.
+# A confusion matrix é usada para avaliar a performance de modelos, logo, deve-se 
+# usá-la no set de testes.
+
+
+# ------------ Métricas de Modelos de Classificação ------------
+# A função conf_mat() é útil, mas geralmente deseja-se armazenar estimativas específicas
+# de performance, possivelmente em uma forma dataframe-friendly. O pacote yardstick foi
+# construido pra lidar com essa necessidade. Para esse tipo de modelo de classificação
+# deve-se olhar  para o positive or negative predictive value e overall accuracy.
+
+# Predizendo os valores
+testing_results <- stack_testing %>%
+  mutate(`Logistic regression` = predict(stack_glm, stack_testing),
+         `Random forest` = predict(stack_rf, stack_testing))
+
+# Calculando precisão
+accuracy(testing_results, truth = Remote, estimate = `Logistic regression`)
+accuracy(testing_results, truth = Remote, estimate = `Random forest`)
+
+# Calculando positive predictive value
+ppv(testing_results, truth = Remote, estimate = `Logistic regression`)
+ppv(testing_results, truth = Remote, estimate = `Random forest`)
+
+# Em termos de overall accuracy e positive predictive value, o random forest model
+# supera a performance do logistic regression model. Pode-se, então, predizer o 
+# status de desenvolvedor remoto mais precisamente com um random forest model.
