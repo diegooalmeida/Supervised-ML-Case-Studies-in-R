@@ -69,3 +69,71 @@ vote_glm <- train(turnout16_2016 ~ .,
 
 vote_glm
 
+# Outra forma de balanceamento: Cross-validation
+# Validação cruzada significa pegar seu conjunto de treinamento e dividi-lo 
+# aleatoriamente e igualmente em subconjuntos, às vezes chamados de "dobras".
+# Uma dobra aqui significa um grupo ou subconjunto ou partição.
+
+# Usa-se uma das dobras para validação e as demais para treinamento, depois 
+# repete-se essas etapas com todos os subconjuntos e combina os resultados, 
+# geralmente fazendo a média. O motivo para isso é o mesmo motivo pelo qual 
+# usaríamos a reamostragem de bootstrap; a validação cruzada permite reduzir
+# o sobreajuste e obter uma estimativa mais precisa do desempenho do seu 
+# modelo em novos dados.
+
+# Logistic regression com upsampling e cross-validation
+vote_glm <- train(turnout16_2016 ~ ., 
+                  method = "glm", family = "binomial",
+                  data = vote_training,
+                  trControl = trainControl(method = "repeatedcv",
+                                           repeats = 2,
+                                           sampling = "up"))
+
+vote_glm
+
+# Random forest com upsampling e cross-validation
+vote_rf <- train(turnout16_2016 ~ ., method = "rf", 
+                 data = vote_training,
+                 trControl = trainControl(method = "repeatedcv", 
+                                          repeats = 2,
+                                          sampling = "up"))
+
+vote_rf
+
+# Modelos de aprendizado de máquina treinados 10-fold cross-validation 
+# repetida 5 vezes, geralmente têm desempenho ideal.
+
+# Descrição dos algorítmos: Treinamento com logistic regression models e random forest
+# models com oversampling para solucionar o desbalanceamento da classe e 
+# cross-validation pra obter uma estimativa mais precisa na performance do modelo.
+
+
+# ------------ Confusion matrix nos dados de treino ------------ 
+
+# logistic regression model 
+vote_training %>%
+  mutate(`Logistic regression` = predict(vote_glm, vote_training)) %>%
+  conf_mat(truth = turnout16_2016, estimate = "Logistic regression")
+
+
+# random forest model
+vote_training %>%
+  mutate(`Random forest` = predict(vote_rf, vote_training)) %>%
+  conf_mat(truth = turnout16_2016, estimate = "Random forest")
+
+
+# ------------ Confusion matrix nos dados de teste ------------ 
+
+# logistic regression model
+vote_testing %>%
+  mutate(`Logistic regression` = predict(vote_glm, vote_testing)) %>%
+  conf_mat(truth = turnout16_2016, estimate = "Logistic regression")
+
+
+# random forest model
+vote_testing %>%
+  mutate(`Random forest` = predict(vote_rf, vote_testing)) %>%
+  conf_mat(truth = turnout16_2016, estimate = "Random forest")
+
+# Logistic regression é um modelo mais simples, mas, nesse caso, performou melhor
+# nos dados de teste, e espera-se que faça um trabalho melhor predizendo em novos dados.
